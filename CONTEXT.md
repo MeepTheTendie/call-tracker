@@ -57,3 +57,8 @@ interface CallLog {
 - Uses Tauri 2 with custom protocol
 - Transparent window with decorations disabled
 - Always on top, skips taskbar
+
+## Preferences
+
+- **Auto-commit**: Enabled with smart commit messages
+- **Push**: Auto-push after each session
