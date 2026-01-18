@@ -1,13 +1,268 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Call Tracker</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #18181b;
+      color: #f4f4f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 380px;
+    }
+    .card {
+      background: #27272a;
+      border-radius: 20px;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .shortcut {
+      font-size: 12px;
+      color: #71717a;
+      margin-bottom: 28px;
+    }
+    .timer-label {
+      font-size: 13px;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .timer {
+      font-size: 56px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: #22c55e;
+      margin-bottom: 28px;
+      transition: color 0.3s;
+    }
+    .timer.warning { color: #f59e0b; }
+    .timer.danger { color: #ef4444; }
+    .today-box {
+      background: #27272a;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .today-label {
+      font-size: 13px;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .today-count {
+      font-size: 48px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: #22c55e;
+      color: #18181b;
+    }
+    .btn:hover { background: #16a34a; }
+    .btn:active { transform: scale(0.98); }
+    .history {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #3f3f46;
+    }
+    .history-title {
+      font-size: 13px;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .clear-btn {
+      background: none;
+      border: 1px solid #3f3f46;
+      color: #71717a;
+      padding: 6px 12px;
+      font-size: 11px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .call-list {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .call-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #27272a;
+    }
+    .call-time { color: #a1a1aa; }
+    .call-elapsed { color: #22c55e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="title">📞 Call Tracker</div>
+      <div class="shortcut">Win+Shift+C to log | Double-click index.html to open</div>
+
+      <div class="timer-label">Time Since Last Call</div>
+      <div class="timer" id="timer">--</div>
+
+      <div class="today-box">
+        <div class="today-label">Today</div>
+        <div class="today-count" id="today">0</div>
+      </div>
+
+      <button class="btn" id="logBtn">+1 Call</button>
+
+      <div class="history">
+        <div class="history-title">
+          Recent Calls
+          <button class="clear-btn" id="clearBtn">Clear</button>
+        </div>
+        <div class="call-list" id="callList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const App = {
+      calls: [],
+      lastCallTime: null,
+
+      init() {
+        this.load();
+        this.render();
+        this.bindEvents();
+        this.startTimer();
+      },
+
+      load() {
+        const saved = localStorage.getItem('callTracker');
+        if (saved) {
+          try {
+            const data = JSON.parse(saved);
+            this.calls = data.calls || [];
+            this.lastCallTime = data.lastCallTime ? new Date(data.lastCallTime) : null;
+          } catch {}
+        }
+      },
+
+      save() {
+        localStorage.setItem('callTracker', JSON.stringify({
+          calls: this.calls,
+          lastCallTime: this.lastCallTime ? this.lastCallTime.toISOString() : null
+        }));
+      },
+
+      formatElapsed(ms) {
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.floor((ms % 60000) / 1000);
+        if (mins < 60) return `${mins}m ${secs}s`;
+        const hrs = Math.floor(mins / 60);
+        return `${hrs}h ${mins % 60}m`;
+      },
+
+      getTodayCalls() {
+        const today = new Date().toDateString();
+        return this.calls.filter(c => new Date(c.timestamp).toDateString() === today).length;
+      },
+
+      logCall() {
+        const now = new Date();
+        this.calls.push({ timestamp: now.toISOString() });
+        this.lastCallTime = now;
+        this.save();
+        this.render();
+      },
+
+      clearHistory() {
+        if (confirm('Clear all calls?')) {
+          this.calls = [];
+          this.lastCallTime = null;
+          this.save();
+          this.render();
+        }
+      },
+
+      startTimer() {
+        const update = () => {
+          const el = document.getElementById('timer');
+          if (this.lastCallTime) {
+            const elapsed = Date.now() - this.lastCallTime.getTime();
+            el.textContent = this.formatElapsed(elapsed);
+            const mins = Math.floor(elapsed / 60000);
+            el.className = 'timer' + (mins >= 60 ? ' danger' : mins >= 30 ? ' warning' : '');
+          } else {
+            el.textContent = '--';
+            el.className = 'timer';
+          }
+        };
+        update();
+        setInterval(update, 1000);
+      },
+
+      render() {
+        document.getElementById('today').textContent = this.getTodayCalls();
+        const list = document.getElementById('callList');
+        const recent = this.calls.slice(-8).reverse();
+        if (recent.length === 0) {
+          list.innerHTML = '<div style="color:#52525b;text-align:center;padding:16px">No calls yet</div>';
+          return;
+        }
+        list.innerHTML = recent.map(c => {
+          const date = new Date(c.timestamp);
+          const elapsed = Date.now() - date.getTime();
+          return `<div class="call-item"><span class="call-time">${date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</span><span class="call-elapsed">${this.formatElapsed(elapsed)} ago</span></div>`;
+        }).join('');
+      },
+
+      bindEvents() {
+        document.getElementById('logBtn').onclick = () => this.logCall();
+        document.getElementById('clearBtn').onclick = () => this.clearHistory();
+        document.addEventListener('keydown', e => {
+          if (e.key === 'c' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            this.logCall();
+          }
+        });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
+</body>
 </html>
