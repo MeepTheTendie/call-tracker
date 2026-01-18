@@ -1,6 +1,0 @@
-{
-  "identifier": "desktop-default",
-  "description": "Default capabilities for the desktop",
-  "windows": ["main"],
-  "permissions": ["core:default", "core:window:default", "shell:allow-open"]
-}
