@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Phone, Clock, Flame } from "lucide-react";
 
 interface CallLog {
@@ -7,55 +7,78 @@ interface CallLog {
 
 function App() {
   const [calls, setCalls] = useState<CallLog[]>(() => {
-    const saved = localStorage.getItem("calls");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("calls");
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      console.warn("Failed to load calls from localStorage");
+      return [];
+    }
   });
-  const [lastCallTime, setLastCallTime] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(0);
+
+  const logCall = useCallback(() => {
+    const now = Date.now();
+    setCalls((prev) => [...prev, { timestamp: now }]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("calls", JSON.stringify(calls));
-    if (calls.length > 0) {
-      setLastCallTime(calls[calls.length - 1].timestamp);
-    }
   }, [calls]);
 
-  const logCall = () => {
-    const now = Date.now();
-    setCalls((prev) => [...prev, { timestamp: now }]);
-    setLastCallTime(now);
-  };
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const formatTimeSince = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  const lastCallTime = calls.length > 0 ? calls[calls.length - 1].timestamp : null;
+
+  const todayCalls = useMemo(() => {
+    const today = new Date();
+    return calls.filter((call) => {
+      const callDate = new Date(call.timestamp);
+      return callDate.toDateString() === today.toDateString();
+    });
+  }, [calls]);
+
+  const resetDaily = useCallback(() => {
+    const today = new Date();
+    const newCalls = calls.filter((call) => {
+      const callDate = new Date(call.timestamp);
+      return callDate.toDateString() === today.toDateString();
+    });
+    setCalls(newCalls);
+  }, [calls]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "c" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        logCall();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [logCall]);
+
+  const formatTimeSince = useCallback((timestamp: number) => {
+    const seconds = Math.floor((now - timestamp) / 1000);
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return `${hours}h ${remainingMinutes}m`;
-  };
+  }, [now]);
 
-  const todayCalls = calls.filter((call) => {
-    const callDate = new Date(call.timestamp);
-    const today = new Date();
-    return callDate.toDateString() === today.toDateString();
-  });
-
-  const resetDaily = () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const newCalls = calls.filter((call) => {
-      const callDate = new Date(call.timestamp);
-      return callDate.toDateString() === today.toDateString();
-    });
-    setCalls(newCalls);
-    if (newCalls.length > 0) {
-      setLastCallTime(newCalls[newCalls.length - 1].timestamp);
-    } else {
-      setLastCallTime(null);
-    }
-  };
+  const timeSinceLastCall = useMemo(() => {
+    if (lastCallTime === null) return "--";
+    return formatTimeSince(lastCallTime);
+  }, [lastCallTime, formatTimeSince]);
 
   return (
     <div className="min-h-screen bg-zinc-900 text-white p-6 flex flex-col items-center">
@@ -74,7 +97,7 @@ function App() {
               <div className="text-zinc-400 text-sm mb-2">Since last call</div>
               <div className="text-5xl font-mono font-bold text-green-400 flex items-center justify-center gap-3">
                 <Clock className="w-8 h-8" />
-                {formatTimeSince(lastCallTime)}
+                {timeSinceLastCall}
               </div>
             </div>
 
