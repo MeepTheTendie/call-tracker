@@ -1,6 +1,21 @@
-# Lessons Learned - Jan 18, 2026
+# Lessons Learned
 
-## Single HTML Files > Frameworks for Simple Utilities
+**⚠️ DEPRECATED:** See `/home/meep/MEGA_LEARNINGS.md` for the complete lessons database.
+
+This file is kept for historical reference but is no longer updated.
+
+---
+
+## Quick Links
+
+- [MEGA LEARNINGS](/home/meep/MEARNINGS.md) - All lessons combined
+- [Call Tracker Specific](#call-tracker-specific)
+
+---
+
+## Call Tracker Specific
+
+### Single HTML Files > Frameworks for Simple Utilities
 
 **Problem:** Used React/Vite/TypeScript/Tauri for a simple call tracker.
 
@@ -13,20 +28,13 @@
 - ~4600 lines of boilerplate deleted
 - 22 files reduced to 3
 
-**Rule of thumb:** If it doesn't need complex state management, routing, or code splitting, vanilla HTML/JS is often better.
-
-## Windows Batch Launcher
+### Windows Batch Launcher
 
 Created `start.bat` for non-technical users:
 - Double-click to run
 - Simple choice menu for dev vs prod
 
-```batch
-start "" "http://localhost:5173"
-npx vite
-```
-
-## Pre-commit Hook Tuning
+### Pre-commit Hook Tuning
 
 Secret scanner flagged keyboard shortcut comments as secrets:
 ```
@@ -35,7 +43,7 @@ Secret scanner flagged keyboard shortcut comments as secrets:
 
 **Fix:** These were false positives. The pre-commit hook is too aggressive for general use.
 
-## Clean Repos Are Better
+### Clean Repos Are Better
 
 Deleted files from call-tracker:
 - All React/Vite/TypeScript scaffolding
@@ -44,6 +52,8 @@ Deleted files from call-tracker:
 - Multiple tsconfig files
 
 **Result:** Repo went from 24 files to 3 files.
+
+---
 
 ## Key Takeaways
 
