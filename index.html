@@ -129,22 +129,63 @@
       border-bottom: 1px solid #27272a;
     }
     .call-time { color: #a1a1aa; }
-    .call-elapsed { color: #22c55e; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="title">📞 Call Tracker</div>
-      <div class="shortcut">Win+Shift+C to log | Double-click index.html to open</div>
+      .goal-progress {
+        margin-top: 12px;
+      }
+      .goal-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #71717a;
+        margin-bottom: 4px;
+      }
+      .goal-bar {
+        height: 6px;
+        background: #3f3f46;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .goal-fill {
+        height: 100%;
+        background: #22c55e;
+        transition: width 0.3s;
+      }
+      .goal-fill.complete {
+        background: #eab308;
+      }
+      .goal-text {
+        font-size: 11px;
+        color: #71717a;
+        margin-top: 6px;
+      }
+      .goal-text.complete {
+        color: #eab308;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="title">📞 Call Tracker</div>
+        <div class="shortcut">Win+Shift+C to log | Double-click index.html to open</div>
 
-      <div class="timer-label">Time Since Last Call</div>
-      <div class="timer" id="timer">--</div>
+        <div class="timer-label">Time Since Last Call</div>
+        <div class="timer" id="timer">--</div>
 
-      <div class="today-box">
-        <div class="today-label">Today</div>
-        <div class="today-count" id="today">0</div>
-      </div>
+        <div class="today-box">
+          <div class="today-label">Today</div>
+          <div class="today-count" id="today">0</div>
+          <div class="goal-progress" id="goalProgress">
+            <div class="goal-header">
+              <span>Progress</span>
+              <span id="goalPercent">0%</span>
+            </div>
+            <div class="goal-bar">
+              <div class="goal-fill" id="goalFill" style="width: 0%"></div>
+            </div>
+            <div class="goal-text" id="goalText">80 more to reach goal</div>
+          </div>
+        </div>
 
       <button class="btn" id="logBtn">+1 Call</button>
 
@@ -162,6 +203,7 @@
     const App = {
       calls: [],
       lastCallTime: null,
+      dailyGoal: 80,
 
       init() {
         this.load();
@@ -177,6 +219,7 @@
             const data = JSON.parse(saved);
             this.calls = data.calls || [];
             this.lastCallTime = data.lastCallTime ? new Date(data.lastCallTime) : null;
+            this.dailyGoal = data.dailyGoal || 80;
           } catch {}
         }
       },
@@ -184,7 +227,8 @@
       save() {
         localStorage.setItem('callTracker', JSON.stringify({
           calls: this.calls,
-          lastCallTime: this.lastCallTime ? this.lastCallTime.toISOString() : null
+          lastCallTime: this.lastCallTime ? this.lastCallTime.toISOString() : null,
+          dailyGoal: this.dailyGoal
         }));
       },
 
@@ -236,7 +280,27 @@
       },
 
       render() {
-        document.getElementById('today').textContent = this.getTodayCalls();
+        const todayCount = this.getTodayCalls();
+        document.getElementById('today').textContent = todayCount;
+        
+        const progress = Math.min(100, Math.round((todayCount / this.dailyGoal) * 100));
+        const remaining = Math.max(0, this.dailyGoal - todayCount);
+        const goalReached = todayCount >= this.dailyGoal;
+        
+        document.getElementById('goalPercent').textContent = progress + '%';
+        const fill = document.getElementById('goalFill');
+        fill.style.width = progress + '%';
+        fill.className = 'goal-fill' + (goalReached ? ' complete' : '');
+        
+        const text = document.getElementById('goalText');
+        if (goalReached) {
+          text.textContent = 'Goal reached! 🎉';
+          text.className = 'goal-text complete';
+        } else {
+          text.textContent = remaining + ' more to reach goal';
+          text.className = 'goal-text';
+        }
+        
         const list = document.getElementById('callList');
         const recent = this.calls.slice(-8).reverse();
         if (recent.length === 0) {
