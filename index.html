@@ -44,23 +44,20 @@
       color: #71717a;
       margin-bottom: 28px;
     }
-    .timer-label {
+    .dials-label {
       font-size: 13px;
       color: #a1a1aa;
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 8px;
     }
-    .timer {
-      font-size: 56px;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
+    .dials-count {
+      font-size: 72px;
+      font-weight: 700;
       color: #22c55e;
-      margin-bottom: 28px;
-      transition: color 0.3s;
+      margin-bottom: 24px;
     }
-    .timer.warning { color: #f59e0b; }
-    .timer.danger { color: #ef4444; }
+    .dials-count.complete { color: #eab308; }
     .today-box {
       background: #27272a;
       border-radius: 16px;
@@ -169,12 +166,10 @@
         <div class="title">📞 Call Tracker</div>
         <div class="shortcut">Win+Shift+C to log | Double-click index.html to open</div>
 
-        <div class="timer-label">Time Since Last Call</div>
-        <div class="timer" id="timer">--</div>
+        <div class="dials-label">Dials Today</div>
+        <div class="dials-count" id="today">0</div>
 
         <div class="today-box">
-          <div class="today-label">Today</div>
-          <div class="today-count" id="today">0</div>
           <div class="goal-progress" id="goalProgress">
             <div class="goal-header">
               <span>Progress</span>
@@ -202,14 +197,12 @@
   <script>
     const App = {
       calls: [],
-      lastCallTime: null,
       dailyGoal: 80,
 
       init() {
         this.load();
         this.render();
         this.bindEvents();
-        this.startTimer();
       },
 
       load() {
@@ -218,7 +211,6 @@
           try {
             const data = JSON.parse(saved);
             this.calls = data.calls || [];
-            this.lastCallTime = data.lastCallTime ? new Date(data.lastCallTime) : null;
             this.dailyGoal = data.dailyGoal || 80;
           } catch {}
         }
@@ -227,17 +219,8 @@
       save() {
         localStorage.setItem('callTracker', JSON.stringify({
           calls: this.calls,
-          lastCallTime: this.lastCallTime ? this.lastCallTime.toISOString() : null,
           dailyGoal: this.dailyGoal
         }));
-      },
-
-      formatElapsed(ms) {
-        const mins = Math.floor(ms / 60000);
-        const secs = Math.floor((ms % 60000) / 1000);
-        if (mins < 60) return `${mins}m ${secs}s`;
-        const hrs = Math.floor(mins / 60);
-        return `${hrs}h ${mins % 60}m`;
       },
 
       getTodayCalls() {
@@ -248,7 +231,6 @@
       logCall() {
         const now = new Date();
         this.calls.push({ timestamp: now.toISOString() });
-        this.lastCallTime = now;
         this.save();
         this.render();
       },
@@ -256,32 +238,16 @@
       clearHistory() {
         if (confirm('Clear all calls?')) {
           this.calls = [];
-          this.lastCallTime = null;
           this.save();
           this.render();
         }
       },
 
-      startTimer() {
-        const update = () => {
-          const el = document.getElementById('timer');
-          if (this.lastCallTime) {
-            const elapsed = Date.now() - this.lastCallTime.getTime();
-            el.textContent = this.formatElapsed(elapsed);
-            const mins = Math.floor(elapsed / 60000);
-            el.className = 'timer' + (mins >= 60 ? ' danger' : mins >= 30 ? ' warning' : '');
-          } else {
-            el.textContent = '--';
-            el.className = 'timer';
-          }
-        };
-        update();
-        setInterval(update, 1000);
-      },
-
       render() {
         const todayCount = this.getTodayCalls();
-        document.getElementById('today').textContent = todayCount;
+        const todayEl = document.getElementById('today');
+        todayEl.textContent = todayCount;
+        todayEl.className = 'dials-count' + (todayCount >= this.dailyGoal ? ' complete' : '');
         
         const progress = Math.min(100, Math.round((todayCount / this.dailyGoal) * 100));
         const remaining = Math.max(0, this.dailyGoal - todayCount);
@@ -309,8 +275,7 @@
         }
         list.innerHTML = recent.map(c => {
           const date = new Date(c.timestamp);
-          const elapsed = Date.now() - date.getTime();
-          return `<div class="call-item"><span class="call-time">${date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</span><span class="call-elapsed">${this.formatElapsed(elapsed)} ago</span></div>`;
+          return `<div class="call-item"><span class="call-time">${date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</span></div>`;
         }).join('');
       },
 

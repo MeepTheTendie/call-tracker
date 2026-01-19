@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Phone, Clock, Flame, X } from "lucide-react";
+import { Phone, Flame, X } from "lucide-react";
 
 interface CallLog {
   timestamp: number;
@@ -17,7 +17,6 @@ function App() {
       return [];
     }
   });
-  const [now, setNow] = useState<number>(0);
   const [dailyGoal, setDailyGoal] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("dailyGoal");
@@ -35,15 +34,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("calls", JSON.stringify(calls));
   }, [calls]);
-
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const lastCallTime = calls.length > 0 ? calls[calls.length - 1].timestamp : null;
 
   const todayCalls = useMemo(() => {
     const today = new Date();
@@ -84,21 +74,6 @@ function App() {
     };
   }, [logCall]);
 
-  const formatTimeSince = useCallback((timestamp: number) => {
-    const seconds = Math.floor((now - timestamp) / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
-  }, [now]);
-
-  const timeSinceLastCall = useMemo(() => {
-    if (lastCallTime === null) return "--";
-    return formatTimeSince(lastCallTime);
-  }, [lastCallTime, formatTimeSince]);
-
   const progressPercent = Math.min(100, Math.round((todayCalls.length / dailyGoal) * 100));
   const remainingCalls = Math.max(0, dailyGoal - todayCalls.length);
   const goalReached = todayCalls.length >= dailyGoal;
@@ -120,89 +95,37 @@ function App() {
           <p className="text-zinc-400 text-sm">Win+Shift+C to log</p>
         </div>
 
-        {lastCallTime ? (
-          <div className="text-center space-y-6">
-            <div className="bg-zinc-800 rounded-2xl p-8">
-              <div className="text-zinc-400 text-sm mb-2">Since last call</div>
-              <div className="text-5xl font-mono font-bold text-green-400 flex items-center justify-center gap-3">
-                <Clock className="w-8 h-8" />
-                {timeSinceLastCall}
-              </div>
-            </div>
-
-            <div className="bg-zinc-800 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-zinc-400 text-sm">Today</div>
-                <div className="text-zinc-400 text-xs">
-                  Goal: {dailyGoal} calls
-                </div>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <Flame className={`w-8 h-8 ${goalReached ? "text-yellow-400" : "text-orange-500"}`} />
-                <span className={`text-4xl font-bold ${goalReached ? "text-yellow-400" : ""}`}>{todayCalls.length}</span>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                  <span>Progress</span>
-                  <span>{progressPercent}%</span>
-                </div>
-                <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${goalReached ? "bg-yellow-400" : "bg-green-500"} transition-all duration-300`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                {goalReached ? (
-                  <div className="text-center text-yellow-400 text-sm mt-2">
-                    Goal reached! 🎉
-                  </div>
-                ) : (
-                  <div className="text-center text-zinc-400 text-sm mt-2">
-                    {remainingCalls} more to reach goal
-                  </div>
-                )}
-              </div>
+        <div className="text-center space-y-6">
+          <div className="bg-zinc-800 rounded-2xl p-8">
+            <div className="text-zinc-400 text-sm mb-2 uppercase tracking-wider">Dials Today</div>
+            <div className={`text-7xl font-bold ${goalReached ? "text-yellow-400" : "text-green-500"}`}>
+              {todayCalls.length}
             </div>
           </div>
-        ) : (
-          <div className="text-center space-y-6">
-            <div className="bg-zinc-800 rounded-2xl p-8">
-              <div className="text-zinc-400 text-sm mb-2">Since last call</div>
-              <div className="text-5xl font-mono font-bold text-zinc-500 flex items-center justify-center gap-3">
-                <Clock className="w-8 h-8" />
-                --
+
+          <div className="bg-zinc-800 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-zinc-400 text-sm">Progress</div>
+              <div className="text-zinc-400 text-xs">
+                Goal: {dailyGoal} calls
               </div>
             </div>
-
-            <div className="bg-zinc-800 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-zinc-400 text-sm">Today</div>
-                <div className="text-zinc-400 text-xs">
-                  Goal: {dailyGoal} calls
-                </div>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <Flame className="w-8 h-8 text-zinc-600" />
-                <span className="text-4xl font-bold text-zinc-500">0</span>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                  <span>Progress</span>
-                  <span>0%</span>
-                </div>
-                <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-2 bg-zinc-600 rounded-full transition-all duration-300"
-                    style={{ width: "0%" }}
-                  />
-                </div>
-                <div className="text-center text-zinc-400 text-sm mt-2">
-                  {dailyGoal} more to reach goal
-                </div>
-              </div>
+            <div className="h-3 bg-zinc-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${goalReached ? "bg-yellow-400" : "bg-green-500"} transition-all duration-300`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-xs text-zinc-400">{progressPercent}%</span>
+              {goalReached ? (
+                <span className="text-sm text-yellow-400 font-medium">Goal reached! 🎉</span>
+              ) : (
+                <span className="text-xs text-zinc-400">{remainingCalls} more</span>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
         <button
           onClick={logCall}
