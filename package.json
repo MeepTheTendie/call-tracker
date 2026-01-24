@@ -5,15 +5,21 @@
   "main": "index.html",
   "scripts": {
     "test": "python3 -m http.server 8001 --bind 127.0.0.1 & sleep 3 && python3 -c \"import webbrowser; webbrowser.open('http://127.0.0.1:8001/tests.html')\"; input('Press Enter to stop server...'); import os; os.system('pkill -f \"python3 -m http.server\"')\"",
-    "test:headless": "node test-runner.js",
+    "test:headless": "bun test-runner.js",
     "serve": "python3 -m http.server 8001 --bind 127.0.0.1",
     "dev": "python3 -m http.server 8001 --bind 127.0.0.1",
-    "validate": "node validate.js"
+    "validate": "bun validate.js"
   },
-  "keywords": ["call", "tracker", "sales", "productivity"],
+  "keywords": [
+    "call",
+    "tracker",
+    "sales",
+    "productivity"
+  ],
   "author": "MeepTheTendie",
   "license": "MIT",
   "devDependencies": {
     "puppeteer": "^21.0.0"
-  }
+  },
+  "packageManager": "bun@1.1.33"
 }
