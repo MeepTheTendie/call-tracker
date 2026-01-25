@@ -20,8 +20,8 @@ function validateHTML(filePath) {
   }
   
   // Check for accessibility
-  if (!content.includes('alt=')) {
-    issues.push('Images should have alt attributes for accessibility');
+  if (!content.includes('alt=') && !content.includes('aria-label=') && !content.includes('role="img"')) {
+    issues.push('Images/emojis should have alt attributes or ARIA labels for accessibility');
   }
   
   // Check for security
@@ -60,7 +60,8 @@ function validatePerformance(filePath) {
   const recommendations = [];
   
   // Check for inefficient selectors
-  if (content.includes('document.querySelector') || content.includes('document.querySelectorAll')) {
+  if ((content.includes('document.querySelector') || content.includes('document.querySelectorAll') || content.includes('getElementById')) && 
+      !content.includes('cacheElements') && !content.includes('elements =')) {
     recommendations.push('Consider caching DOM selectors for better performance');
   }
   

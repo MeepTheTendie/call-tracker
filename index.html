@@ -163,7 +163,7 @@
   <body>
     <div class="container">
       <div class="card">
-        <div class="title">📞 Call Tracker</div>
+        <div class="title"><span role="img" aria-label="phone">📞</span> Call Tracker</div>
         <div class="shortcut">Win+Shift+C to log | Double-click index.html to open</div>
 
         <div class="dials-label">Dials Today</div>
@@ -198,100 +198,214 @@
     const App = {
       calls: [],
       dailyGoal: 80,
+      storage: null,
+      elements: {},
 
       init() {
-        this.load();
-        this.render();
-        this.bindEvents();
+        try {
+          this.storage = window.localStorage;
+          this.cacheElements();
+          this.load();
+          this.render();
+          this.bindEvents();
+        } catch (error) {
+          console.error('Failed to initialize app:', error);
+          this.showErrorMessage('Failed to initialize app. Some features may not work.');
+        }
+      },
+
+      cacheElements() {
+        this.elements = {
+          today: document.getElementById('today'),
+          goalPercent: document.getElementById('goalPercent'),
+          goalFill: document.getElementById('goalFill'),
+          goalText: document.getElementById('goalText'),
+          callList: document.getElementById('callList'),
+          logBtn: document.getElementById('logBtn'),
+          clearBtn: document.getElementById('clearBtn')
+        };
       },
 
       load() {
-        const saved = localStorage.getItem('callTracker');
-        if (saved) {
-          try {
+        if (!this.storage) return;
+        
+        try {
+          const saved = this.storage.getItem('callTracker');
+          if (saved) {
             const data = JSON.parse(saved);
-            this.calls = data.calls || [];
-            this.dailyGoal = data.dailyGoal || 80;
-          } catch {}
+            this.calls = Array.isArray(data.calls) ? data.calls : [];
+            this.dailyGoal = typeof data.dailyGoal === 'number' && data.dailyGoal > 0 ? data.dailyGoal : 80;
+          }
+        } catch (error) {
+          console.warn('Failed to load saved data:', error);
+          this.calls = [];
+          this.dailyGoal = 80;
         }
       },
 
       save() {
-        localStorage.setItem('callTracker', JSON.stringify({
-          calls: this.calls,
-          dailyGoal: this.dailyGoal
-        }));
+        if (!this.storage) return;
+        
+        try {
+          this.storage.setItem('callTracker', JSON.stringify({
+            calls: this.calls,
+            dailyGoal: this.dailyGoal
+          }));
+        } catch (error) {
+          console.error('Failed to save data:', error);
+          this.showErrorMessage('Failed to save data. Changes may not persist.');
+        }
       },
 
       getTodayCalls() {
         const today = new Date().toDateString();
-        return this.calls.filter(c => new Date(c.timestamp).toDateString() === today).length;
+        return this.calls.filter(c => {
+          try {
+            return new Date(c.timestamp).toDateString() === today;
+          } catch {
+            return false;
+          }
+        }).length;
       },
 
       logCall() {
-        const now = new Date();
-        this.calls.push({ timestamp: now.toISOString() });
-        this.save();
-        this.render();
+        try {
+          const now = new Date();
+          this.calls.push({ timestamp: now.toISOString() });
+          this.save();
+          this.render();
+        } catch (error) {
+          console.error('Failed to log call:', error);
+          this.showErrorMessage('Failed to log call.');
+        }
       },
 
       clearHistory() {
-        if (confirm('Clear all calls?')) {
-          this.calls = [];
-          this.save();
-          this.render();
+        try {
+          if (confirm('Clear all calls? This cannot be undone.')) {
+            this.calls = [];
+            this.save();
+            this.render();
+          }
+        } catch (error) {
+          console.error('Failed to clear history:', error);
+          this.showErrorMessage('Failed to clear history.');
         }
       },
 
       render() {
-        const todayCount = this.getTodayCalls();
-        const todayEl = document.getElementById('today');
-        todayEl.textContent = todayCount;
-        todayEl.className = 'dials-count' + (todayCount >= this.dailyGoal ? ' complete' : '');
-        
-        const progress = Math.min(100, Math.round((todayCount / this.dailyGoal) * 100));
-        const remaining = Math.max(0, this.dailyGoal - todayCount);
-        const goalReached = todayCount >= this.dailyGoal;
-        
-        document.getElementById('goalPercent').textContent = progress + '%';
-        const fill = document.getElementById('goalFill');
-        fill.style.width = progress + '%';
-        fill.className = 'goal-fill' + (goalReached ? ' complete' : '');
-        
-        const text = document.getElementById('goalText');
-        if (goalReached) {
-          text.textContent = 'Goal reached! 🎉';
-          text.className = 'goal-text complete';
-        } else {
-          text.textContent = remaining + ' more to reach goal';
-          text.className = 'goal-text';
+        try {
+          const todayCount = this.getTodayCalls();
+          
+          // Update today's count
+          this.elements.today.textContent = todayCount;
+          this.elements.today.className = 'dials-count' + (todayCount >= this.dailyGoal ? ' complete' : '');
+          
+          const progress = Math.min(100, Math.round((todayCount / this.dailyGoal) * 100));
+          const remaining = Math.max(0, this.dailyGoal - todayCount);
+          const goalReached = todayCount >= this.dailyGoal;
+          
+          // Update progress
+          this.elements.goalPercent.textContent = progress + '%';
+          this.elements.goalFill.style.width = progress + '%';
+          this.elements.goalFill.className = 'goal-fill' + (goalReached ? ' complete' : '');
+          
+          // Update goal text
+          if (goalReached) {
+            this.elements.goalText.innerHTML = 'Goal reached! <span role="img" aria-label="celebration">🎉</span>';
+            this.elements.goalText.className = 'goal-text complete';
+          } else {
+            this.elements.goalText.textContent = remaining + ' more to reach goal';
+            this.elements.goalText.className = 'goal-text';
+          }
+          
+          // Update call list
+          this.renderCallList();
+        } catch (error) {
+          console.error('Failed to render:', error);
+          this.showErrorMessage('Failed to update display.');
         }
-        
-        const list = document.getElementById('callList');
+      },
+
+      renderCallList() {
         const recent = this.calls.slice(-8).reverse();
         if (recent.length === 0) {
-          list.innerHTML = '<div style="color:#52525b;text-align:center;padding:16px">No calls yet</div>';
+          this.elements.callList.innerHTML = '<div style="color:#52525b;text-align:center;padding:16px">No calls yet</div>';
           return;
         }
-        list.innerHTML = recent.map(c => {
-          const date = new Date(c.timestamp);
-          return `<div class="call-item"><span class="call-time">${date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</span></div>`;
+        
+        this.elements.callList.innerHTML = recent.map(c => {
+          try {
+            const date = new Date(c.timestamp);
+            return `<div class="call-item"><span class="call-time">${date.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}</span></div>`;
+          } catch {
+            return '<div class="call-item"><span class="call-time">Invalid time</span></div>';
+          }
         }).join('');
       },
 
-      bindEvents() {
-        document.getElementById('logBtn').onclick = () => this.logCall();
-        document.getElementById('clearBtn').onclick = () => this.clearHistory();
-        document.addEventListener('keydown', e => {
-          if (e.key === 'c' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            this.logCall();
+      showErrorMessage(message) {
+        const existing = document.querySelector('.error-message');
+        if (existing) existing.remove();
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #dc2626;
+          color: white;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          z-index: 1000;
+          max-width: 300px;
+        `;
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+        
+        setTimeout(() => {
+          if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
           }
-        });
+        }, 5000);
+      },
+
+      bindEvents() {
+        try {
+          this.elements.logBtn.onclick = () => this.logCall();
+          this.elements.clearBtn.onclick = () => this.clearHistory();
+          
+          const handleKeydown = (e) => {
+            try {
+              if (e.key === 'c' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                this.logCall();
+              }
+            } catch (error) {
+              console.error('Keyboard shortcut failed:', error);
+            }
+          };
+          
+          document.addEventListener('keydown', handleKeydown);
+          
+          // Store for cleanup
+          this._cleanup = () => {
+            document.removeEventListener('keydown', handleKeydown);
+          };
+        } catch (error) {
+          console.error('Failed to bind events:', error);
+        }
       }
     };
 
-    document.addEventListener('DOMContentLoaded', () => App.init());
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => App.init());
+    } else {
+      App.init();
+    }
   </script>
 </body>
 </html>
